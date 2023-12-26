@@ -1,10 +1,5 @@
 package com.runapp.guildservice.controller;
 
-import static org.mockito.Mockito.anyInt;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.runapp.guildservice.dto.dtoMapper.TeamDtoMapper;
 import com.runapp.guildservice.dto.request.DeleteStorageRequest;
@@ -18,12 +13,6 @@ import com.runapp.guildservice.feignClient.StoryManagementServiceClient;
 import com.runapp.guildservice.model.TeamModel;
 import com.runapp.guildservice.service.TeamService;
 import feign.FeignException;
-
-import java.io.DataInputStream;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Optional;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
@@ -41,9 +30,20 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.DataInputStream;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Optional;
+
+import static org.mockito.Mockito.*;
+
 @ContextConfiguration(classes = {TeamController.class})
 @ExtendWith(SpringExtension.class)
 class TeamControllerDiffblueTest {
+
+    @Autowired
+    private TeamController teamController;
+
     @MockBean
     private ProfileServiceClient profileServiceClient;
 
@@ -53,14 +53,77 @@ class TeamControllerDiffblueTest {
     @MockBean
     private StoryManagementServiceClient storyManagementServiceClient;
 
-    @Autowired
-    private TeamController teamController;
-
     @MockBean
     private TeamDtoMapper teamDtoMapper;
 
     @MockBean
     private TeamService teamService;
+
+
+    /**
+     * Methods under test:
+     * {@link TeamController#createTeam(TeamRequest, BindingResult)}
+     */
+
+
+    /**
+     * Тест успешного создания команды: отправка корректных данных методом GET и ожидание статуса 200
+     * Successful Team Creation Test: Sending Correct Data via the GET Method and Expecting a Status Code of 200
+     */
+    @Test
+    void testCreateTeam() throws Exception {
+        when(teamService.getAllTeams()).thenReturn(new ArrayList<>());
+
+        TeamRequest teamRequest = new TeamRequest();
+        teamRequest.setAdminId(1);
+        teamRequest.setDescriptionTeam("Description Team");
+        teamRequest.setMaximumPlayers(3);
+        teamRequest.setStoryId(1);
+        teamRequest.setTeamName("Team Name");
+        String content = (new ObjectMapper()).writeValueAsString(teamRequest);
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/teams")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(content);
+        MockMvcBuilders.standaloneSetup(teamController)
+                .build()
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.content().contentType("application/json"))
+                .andExpect(MockMvcResultMatchers.content().string("[]"));
+    }
+
+    /**
+     * Тест создания команды с некорректными данными: отправка данных с ошибками и ожидание статуса 400
+     * Team Creation Test with Incorrect Data: Sending Data with Errors and Expecting a Status Code of 400
+     */
+    @Test
+    void testCreateTeamWithInvalidInput() throws Exception {
+        TeamRequest teamRequest = new TeamRequest();
+        teamRequest.setAdminId(1);
+        teamRequest.setDescriptionTeam("Description Team");
+        teamRequest.setMaximumPlayers(-1);  // Incorrect Value for Maximum Number of Players
+        teamRequest.setStoryId(1);
+        teamRequest.setTeamName("Team Name");
+
+        String content = (new ObjectMapper()).writeValueAsString(teamRequest);
+
+        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.post("/teams")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(content);
+
+        MockMvcBuilders.standaloneSetup(teamController)
+                .build()
+                .perform(requestBuilder)
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.content().contentType("application/json"));
+    }
+
+
+
+
+
+
+
 
     /**
      * Method under test: {@link TeamController#getTeamById(int)}
@@ -123,31 +186,6 @@ class TeamControllerDiffblueTest {
                 .andExpect(MockMvcResultMatchers.content().string("[]"));
     }
 
-    /**
-     * Method under test:
-     * {@link TeamController#createTeam(TeamRequest, BindingResult)}
-     */
-    @Test
-    void testCreateTeam() throws Exception {
-        when(teamService.getAllTeams()).thenReturn(new ArrayList<>());
-
-        TeamRequest teamRequest = new TeamRequest();
-        teamRequest.setAdminId(1);
-        teamRequest.setDescriptionTeam("Description Team");
-        teamRequest.setMaximumPlayers(3);
-        teamRequest.setStoryId(1);
-        teamRequest.setTeamName("Team Name");
-        String content = (new ObjectMapper()).writeValueAsString(teamRequest);
-        MockHttpServletRequestBuilder requestBuilder = MockMvcRequestBuilders.get("/teams")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(content);
-        MockMvcBuilders.standaloneSetup(teamController)
-                .build()
-                .perform(requestBuilder)
-                .andExpect(MockMvcResultMatchers.status().isOk())
-                .andExpect(MockMvcResultMatchers.content().contentType("application/json"))
-                .andExpect(MockMvcResultMatchers.content().string("[]"));
-    }
 
     /**
      * Method under test: {@link TeamController#deleteTeam(int)}
